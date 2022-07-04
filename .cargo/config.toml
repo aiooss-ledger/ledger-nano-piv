@@ -3,6 +3,7 @@ runner = "speculos.py -m nanosp"
 
 [unstable]
 build-std = ["core"]
+build-std-features = ["compiler-builtins-mem"]
 
 [build]
 target = "nanosplus.json"
