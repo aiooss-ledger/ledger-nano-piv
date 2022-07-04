@@ -129,8 +129,7 @@ fn process_get_version(comm: &mut io::Comm) {
 
 /// Import asymetric private key
 fn process_import_asym(comm: &mut io::Comm) {
-    // TODO
-    comm.reply_ok();
+    return comm.reply(StatusWords::FuncNotSupported);
 }
 
 #[no_mangle]
