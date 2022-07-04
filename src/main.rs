@@ -20,6 +20,7 @@ nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
 #[repr(u16)]
 enum StatusWords {
     // VerificationFailed = 0x6300,
+    WrongLength = 0x6700,
     // SecureMessagingNotSupported = 0x6882,
     // SecurityStatusNotSatisfied = 0x6982,
     // AuthMethodBlocked = 0x6983,
@@ -27,7 +28,7 @@ enum StatusWords {
     // IncorrectSecureMessagingData = 0x6988,
     WrongData = 0x6A80,
     FuncNotSupported = 0x6A81,
-    // FileNotFound = 0x6A82,
+    FileNotFound = 0x6A82,
     // FileFull = 0x6A84,
     IncorrectP1P2 = 0x6A86,
     // RefDataNotFound = 0x6A88,
@@ -75,13 +76,49 @@ fn continue_response(comm: &mut io::Comm) {
     comm.reply_ok();
 }
 
-/// Get data from card
+// Process get data
 fn process_get_data(comm: &mut io::Comm) {
     if comm.get_p1() != 0x3F || comm.get_p2() != 0xFF {
         return comm.reply(StatusWords::IncorrectP1P2);
     }
 
-    // TODO
+    let data = match comm.get_data() {
+        Ok(d) => d,
+        Err(e) => {
+            return comm.reply(e);
+        }
+    };
+
+    let tag = data[0];
+    let len = data[1];
+
+    // Check tag
+    if tag != 0x5C {
+        return comm.reply(StatusWords::WrongData);
+    }
+
+    // Check length
+    if len as usize != data.len() - 2 {
+        return comm.reply(StatusWords::WrongLength);
+    }
+
+    // Extract slot number
+    if data[2] != 0x5F {
+        return comm.reply(StatusWords::FileNotFound);
+    }
+
+    if data[3] != 0xC1 {
+        // Todo: handle yk files
+        // https://github.com/arekinath/PivApplet/blob/60fc61ac21fda3caf6cbd4c96f7a7e2db07f2a32/src/net/cooperi/pivapplet/PivApplet.java#L2849
+        return comm.reply(StatusWords::FileNotFound);
+    }
+
+    if data[4] != 0x0D {
+        // Todo: handle multiple slots
+        return comm.reply(StatusWords::FileNotFound);
+    }
+
+    // Todo: replay data
     comm.reply_ok();
 }
 
