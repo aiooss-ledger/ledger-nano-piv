@@ -3,6 +3,7 @@
 
 use nanos_sdk::buttons::ButtonEvent;
 use nanos_sdk::io;
+use nanos_sdk::bindings::{os_serial};
 
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
 
@@ -93,14 +94,30 @@ fn process_get_metadata(comm: &mut io::Comm) {
     comm.reply_ok();
 }
 
+/// Get ledger serial
+
+const LEDGER_SERIAL_SIZE: usize = 7;
+const SERIAL_SIZE_AGE: usize = 4;
+
+fn get_ledger_serial() -> [u8; LEDGER_SERIAL_SIZE] {
+    let mut serial = [0_u8; LEDGER_SERIAL_SIZE];
+
+    unsafe {
+        os_serial(serial.as_mut_ptr(), LEDGER_SERIAL_SIZE as u32);
+    }
+
+    serial
+}
+
 /// Get card serial
 fn process_get_serial(comm: &mut io::Comm) {
     if comm.get_p1() != 0x00 || comm.get_p2() != 0x00 {
         return comm.reply(StatusWords::IncorrectP1P2);
     }
 
-    // TODO: serial shound not be constant
-    comm.append(&[0, 0, 0, 0x80]);
+
+    let serial = get_ledger_serial();
+    comm.append(&serial[0..SERIAL_SIZE_AGE]);
     comm.reply_ok();
 }
 

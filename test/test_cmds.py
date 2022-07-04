@@ -6,7 +6,10 @@ from time import sleep
 
 SPECULOS = True
 
-CMDS = []
+CMDS = [
+    "E0FD0000", # Get version
+    "E0F80000", # Get serial
+]
 
 if SPECULOS:
     d = getDongleTCP(port=9999)  # Speculos
