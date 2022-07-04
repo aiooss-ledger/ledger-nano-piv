@@ -32,16 +32,6 @@ impl From<StatusWords> for io::Reply {
     }
 }
 
-/// Verify card command
-fn process_verify(comm: &mut io::Comm) {
-    if comm.get_p1() != 0x00 && comm.get_p1() != 0xFF {
-        return comm.reply(StatusWords::IncorrectP1P2);
-    }
-
-    // TODO
-    comm.reply_ok();
-}
-
 /// Generate Asymmetric Key Pair card command
 fn process_gen_asym(comm: &mut io::Comm) {
     if comm.get_p1() != 0x00 {
@@ -115,7 +105,6 @@ fn process_get_serial(comm: &mut io::Comm) {
         return comm.reply(StatusWords::IncorrectP1P2);
     }
 
-
     let serial = get_ledger_serial();
     comm.append(&serial[0..SERIAL_SIZE_AGE]);
     comm.reply_ok();
@@ -144,12 +133,6 @@ fn process_get_version(comm: &mut io::Comm) {
     comm.reply_ok();
 }
 
-/// Import asymetric private key
-fn process_import_asym(comm: &mut io::Comm) {
-    // TODO
-    comm.reply_ok();
-}
-
 #[no_mangle]
 extern "C" fn sample_main() {
     let mut comm = io::Comm::new();
@@ -160,7 +143,6 @@ extern "C" fn sample_main() {
 
             // Standard PIV commands
             // See https://csrc.nist.gov/publications/detail/sp/800-73/4/final
-            io::Event::Command(0x20) => process_verify(&mut comm),
             io::Event::Command(0x47) => process_gen_asym(&mut comm),
             io::Event::Command(0x87) => process_general_auth(&mut comm),
             io::Event::Command(0xC0) => continue_response(&mut comm),
@@ -173,7 +155,6 @@ extern "C" fn sample_main() {
             io::Event::Command(0xf8) => process_get_serial(&mut comm),
             io::Event::Command(0xfb) => process_reset(&mut comm),
             io::Event::Command(0xfd) => process_get_version(&mut comm),
-            io::Event::Command(0xfe) => process_import_asym(&mut comm),
 
             io::Event::Command(_) => comm.reply(StatusWords::FuncNotSupported),
 
