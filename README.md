@@ -23,8 +23,14 @@ on a device in a single `cargo ledger load` command in your app directory.
 
 One can for example use [speculos](https://github.com/LedgerHQ/speculos).
 
-There is a small test script that sends some of the available commands in
-`test/test_cmds.py`, or raw APDUs that can be used with `ledgerctl`.
+In a first console:
+```
+cargo run
+```
+In a second one:
+```
+pytest test/ -v -s 
+```
 
 ## References
 
