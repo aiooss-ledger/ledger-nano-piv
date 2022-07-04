@@ -5,6 +5,13 @@ use nanos_sdk::buttons::ButtonEvent;
 use nanos_sdk::io;
 use nanos_sdk::bindings::{os_serial};
 
+mod bitmaps;
+mod fonts;
+mod layout;
+mod screen_util;
+
+use layout::*;
+
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
 
 /// Status Words as specified in table 6 of Interfaces for Personal Identity
@@ -136,6 +143,11 @@ fn process_get_version(comm: &mut io::Comm) {
 #[no_mangle]
 extern "C" fn sample_main() {
     let mut comm = io::Comm::new();
+
+    // erase screen
+    screen_util::fulldraw(0, 0, &bitmaps::BLANK);
+    bitmaps::PADLOCK.draw(64 - (bitmaps::PADLOCK.width as i32) / 2, 4);
+    "*PIV* app".display(Line::Second, Layout::Centered);
     loop {
         match comm.next_event() {
             io::Event::Button(ButtonEvent::BothButtonsRelease) => nanos_sdk::exit_app(0),

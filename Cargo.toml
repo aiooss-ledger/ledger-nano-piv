@@ -8,7 +8,7 @@ edition = "2021"
 nanos_sdk = { path = "../ledger-nanos-sdk" }
 
 [profile.release]
-opt-level = 'z'
+opt-level = 0 
 lto = true
 
 [package.metadata.nanos]
