@@ -5,10 +5,10 @@ authors = ["yhql", "Alexandre Iooss"]
 edition = "2021"
 
 [dependencies]
-nanos_sdk = { path = "../ledger-nanos-sdk" }
+nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk/", branch = "unified_build" }
 
 [profile.release]
-opt-level = 0 
+opt-level = 0
 lto = true
 
 [package.metadata.nanos]

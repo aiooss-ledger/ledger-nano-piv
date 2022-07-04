@@ -4,14 +4,9 @@ TODO
 
 ## Building
 
-  * Clone [ledger-nanos-sdk on branch unified_build](https://github.com/LedgerHQ/ledger-nanos-sdk/tree/unified_build) next to this repository.
-
-  * Clone [ledger-nanos-ui](https://github.com/LedgerHQ/ledger-nanos-ui) next to this repository and edit `nanos_sdk = { path = "../ledger-nanos-sdk" }` in `Cargo.toml`.
-
-  * Then you should be able to compile:
-    ```
-    cargo build --release
-    ```
+```
+cargo build --release
+```
 
 ## Loading
 
@@ -29,7 +24,7 @@ cargo run
 ```
 In a second one:
 ```
-pytest test/ -v -s 
+pytest test/ -v -s
 ```
 
 ## References
