@@ -10,7 +10,7 @@ TODO
 
   * Then you should be able to compile:
     ```
-    cargo build --release -Z build-std=core
+    cargo build --release
     ```
 
 ## Loading
