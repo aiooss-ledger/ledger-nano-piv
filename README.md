@@ -4,9 +4,14 @@ TODO
 
 ## Building
 
-```
-cargo build --release -Z build-std=core --target=../ledger-nanos-sdk/nanosplus.json
-```
+  * Clone [ledger-nanos-sdk on branch unified_build](https://github.com/LedgerHQ/ledger-nanos-sdk/tree/unified_build) next to this repository.
+
+  * Clone [ledger-nanos-ui](https://github.com/LedgerHQ/ledger-nanos-ui) next to this repository and edit `nanos_sdk = { path = "../ledger-nanos-sdk" }` in `Cargo.toml`.
+
+  * Then you should be able to compile:
+    ```
+    cargo build --release -Z build-std=core
+    ```
 
 ## Loading
 
