@@ -112,8 +112,15 @@ fn process_get_serial(comm: &mut io::Comm) {
         return comm.reply(StatusWords::IncorrectP1P2);
     }
 
-    let serial = get_ledger_serial();
-    comm.append(&serial[0..SERIAL_SIZE_AGE]);
+    let ldg_serial = get_ledger_serial();
+    let age_serial = [
+        ldg_serial[0],
+        ldg_serial[2],
+        ldg_serial[4],
+        ldg_serial[6]
+    ];
+
+    comm.append(&age_serial);
     comm.reply_ok();
 }
 

@@ -18,7 +18,7 @@ def exchange_and_expect(input_hex: str, expected_output_hex: str):
     assert r.hex() == expected_output_hex.lower()
 
 def test_get_serial():
-    exchange_and_expect('e0f8000000', '312e322e')
+    exchange_and_expect('e0f8000000', '1234'.encode('utf-8').hex())
 
 def test_get_version():
     exchange_and_expect('e0fd000000', '050400')
