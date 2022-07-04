@@ -82,7 +82,6 @@ impl<const S: usize> Displayable for [Glyph<S>] {
     }
 }
 
-
 pub const BLANK: [u8; 128 * 8] = [0u8; 128 * 8];
 pub const PADLOCK: Glyph<25> = Glyph::new(
     [

@@ -23,7 +23,7 @@ jobs:
         with:
           toolchain: nightly
           override: true
-          target: thumbv6m-none-eabi 
+          target: thumbv6m-none-eabi
       - name: Cargo build
         uses: actions-rs/cargo@v1
         with:

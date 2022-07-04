@@ -65,7 +65,7 @@ impl Displayable for &str {
                 b'*' => {
                     font_choice ^= 1;
                     acc
-                },
+                }
                 _ => acc + OPEN_SANS[font_choice].dims[*c as usize - 0x20] + padding as u8,
             });
 
@@ -84,7 +84,8 @@ impl Displayable for &str {
             let offset_c = *c as usize - 0x20;
             // let character = picrs(&OPEN_SANS[font_choice].chars.0[offset_c]);
             let character = unsafe {
-                let tmp = pic(OPEN_SANS[font_choice].chars.0[offset_c].as_ptr() as *mut c_void) as *const u8;
+                let tmp = pic(OPEN_SANS[font_choice].chars.0[offset_c].as_ptr() as *mut c_void)
+                    as *const u8;
                 core::slice::from_raw_parts(tmp, OPEN_SANS[font_choice].chars.0[offset_c].len())
             };
             let c_width = OPEN_SANS[font_choice].dims[offset_c];

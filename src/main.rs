@@ -1,9 +1,9 @@
 #![no_std]
 #![no_main]
 
+use nanos_sdk::bindings::os_serial;
 use nanos_sdk::buttons::ButtonEvent;
 use nanos_sdk::io;
-use nanos_sdk::bindings::{os_serial};
 
 mod bitmaps;
 mod fonts;
@@ -52,7 +52,9 @@ fn process_select_card(comm: &mut io::Comm) {
         }
     }
 
-    comm.append(&[0x61, 0x11, 0x4f, 0x06, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00, 0x79, 0x07, 0x4f, 0x05]);
+    comm.append(&[
+        0x61, 0x11, 0x4f, 0x06, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00, 0x79, 0x07, 0x4f, 0x05,
+    ]);
     comm.append(&PIV_APP_AID);
     comm.reply_ok();
 }
