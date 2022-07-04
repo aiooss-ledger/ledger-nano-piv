@@ -25,7 +25,7 @@ enum StatusWords {
     // AuthMethodBlocked = 0x6983,
     // MissingSecureMessagingData = 0x6987,
     // IncorrectSecureMessagingData = 0x6988,
-    // WrongData = 0x6A80,
+    WrongData = 0x6A80,
     FuncNotSupported = 0x6A81,
     // FileNotFound = 0x6A82,
     // FileFull = 0x6A84,
@@ -37,6 +37,24 @@ impl From<StatusWords> for io::Reply {
     fn from(sw: StatusWords) -> io::Reply {
         io::Reply(sw as u16)
     }
+}
+
+const PIV_APP_AID: [u8; 5] = [0xa0, 0x00, 0x00, 0x03, 0x08];
+
+/// Select card command
+fn process_select_card(comm: &mut io::Comm) {
+    if comm.get_p1() != 0x04 || comm.get_p2() != 0x00 {
+        return comm.reply(StatusWords::IncorrectP1P2);
+    }
+    if let Ok(d) = comm.get_data() {
+        if d != PIV_APP_AID {
+            return comm.reply(StatusWords::WrongData);
+        }
+    }
+
+    comm.append(&[0x61, 0x11, 0x4f, 0x06, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00, 0x79, 0x07, 0x4f, 0x05]);
+    comm.append(&PIV_APP_AID);
+    comm.reply_ok();
 }
 
 /// Generate Asymmetric Key Pair card command
@@ -94,7 +112,6 @@ fn process_get_metadata(comm: &mut io::Comm) {
 /// Get ledger serial
 
 const LEDGER_SERIAL_SIZE: usize = 7;
-const SERIAL_SIZE_AGE: usize = 4;
 
 fn get_ledger_serial() -> [u8; LEDGER_SERIAL_SIZE] {
     let mut serial = [0_u8; LEDGER_SERIAL_SIZE];
@@ -162,6 +179,7 @@ extern "C" fn sample_main() {
 
             // Standard PIV commands
             // See https://csrc.nist.gov/publications/detail/sp/800-73/4/final
+            io::Event::Command(0xA4) => process_select_card(&mut comm),
             io::Event::Command(0x47) => process_gen_asym(&mut comm),
             io::Event::Command(0x87) => process_general_auth(&mut comm),
             io::Event::Command(0xC0) => continue_response(&mut comm),
