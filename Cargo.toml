@@ -5,7 +5,7 @@ authors = ["yhql", "Alexandre Iooss"]
 edition = "2021"
 
 [dependencies]
-nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk/", branch = "unified_build" }
+nanos_sdk = { git = "https://github.com/aiooss-ledger/ledger-nanos-sdk/", branch = "ccid" }
 num = { version = "0.4", default-features = false }
 num-derive = { version = "0.3", default-features = false }
 num-traits = { version = "0.2", default-features = false }
@@ -19,7 +19,7 @@ lto = true
 curve = "secp256k1"
 flags = "0"
 icon = "piv.gif"
-path = ""
+path = "m/5261654'"
 
 [features]
 default = [ "speculos" ]

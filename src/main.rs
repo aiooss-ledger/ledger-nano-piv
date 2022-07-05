@@ -48,6 +48,7 @@ fn ecdh(
     p: &[u8],
     p_len: u32,
 ) -> Option<([u8; 0x20])> {
+
     let mut secret = [0u8; 0x20];
     //let secret_len = &mut (secret.len() as u32);
     let len = unsafe {
@@ -319,7 +320,7 @@ extern "C" fn sample_main() {
     // erase screen
     screen_util::fulldraw(0, 0, &bitmaps::BLANK);
     bitmaps::PADLOCK.draw(64 - (bitmaps::PADLOCK.width as i32) / 2, 4);
-    "*PIV*".display(Line::Second, Layout::Centered);
+    "*PIV* ready".display(Line::Second, Layout::Centered);
     env!("CARGO_PKG_VERSION").display(Line::Third, Layout::Centered);
 
     let mut data_response_buffer = DataResponseBuffer::new();
