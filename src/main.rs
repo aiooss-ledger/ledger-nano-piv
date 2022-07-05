@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+use nanos_sdk::bindings::os_serial;
 use nanos_sdk::buttons::ButtonEvent;
 use nanos_sdk::io;
 use nanos_sdk::bindings::{os_serial};
@@ -25,6 +26,7 @@ nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
 #[repr(u16)]
 enum StatusWords {
     // VerificationFailed = 0x6300,
+    WrongLength = 0x6700,
     // SecureMessagingNotSupported = 0x6882,
     // SecurityStatusNotSatisfied = 0x6982,
     // AuthMethodBlocked = 0x6983,
@@ -32,7 +34,7 @@ enum StatusWords {
     // IncorrectSecureMessagingData = 0x6988,
     WrongData = 0x6A80,
     FuncNotSupported = 0x6A81,
-    // FileNotFound = 0x6A82,
+    FileNotFound = 0x6A82,
     // FileFull = 0x6A84,
     IncorrectP1P2 = 0x6A86,
     // RefDataNotFound = 0x6A88,
@@ -91,18 +93,10 @@ fn process_select_card(comm: &mut io::Comm) {
         }
     }
 
-    comm.append(&[0x61, 0x11, 0x4f, 0x06, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00, 0x79, 0x07, 0x4f, 0x05]);
+    comm.append(&[
+        0x61, 0x11, 0x4f, 0x06, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00, 0x79, 0x07, 0x4f, 0x05,
+    ]);
     comm.append(&PIV_APP_AID);
-    comm.reply_ok();
-}
-
-/// Generate Asymmetric Key Pair card command
-fn process_gen_asym(comm: &mut io::Comm) {
-    if comm.get_p1() != 0x00 {
-        return comm.reply(StatusWords::IncorrectP1P2);
-    }
-
-    // TODO
     comm.reply_ok();
 }
 
@@ -179,34 +173,53 @@ fn continue_response(comm: &mut io::Comm) {
     comm.reply_ok();
 }
 
-/// Get data from card
+// Process get data
 fn process_get_data(comm: &mut io::Comm) {
     if comm.get_p1() != 0x3F || comm.get_p2() != 0xFF {
         return comm.reply(StatusWords::IncorrectP1P2);
     }
 
-    // TODO
-    comm.reply_ok();
-}
+    let data = match comm.get_data() {
+        Ok(d) => d,
+        Err(e) => {
+            return comm.reply(e);
+        }
+    };
 
-/// Put data on card
-fn process_put_data(comm: &mut io::Comm) {
-    if comm.get_p1() != 0x3F || comm.get_p2() != 0xFF {
-        return comm.reply(StatusWords::IncorrectP1P2);
+    let tag = data[0];
+    let len = data[1];
+
+    // Check tag
+    if tag != 0x5C {
+        return comm.reply(StatusWords::WrongData);
     }
 
-    // TODO
-    comm.reply_ok();
-}
+    // Check length
+    if len as usize != data.len() - 2 {
+        return comm.reply(StatusWords::WrongLength);
+    }
 
-/// Get card metadata
-fn process_get_metadata(comm: &mut io::Comm) {
-    // TODO
+    // Extract slot number
+    if data[2] != 0x5F {
+        return comm.reply(StatusWords::FileNotFound);
+    }
+
+    if data[3] != 0xC1 {
+        // Todo: handle yk files
+        // https://github.com/arekinath/PivApplet/blob/60fc61ac21fda3caf6cbd4c96f7a7e2db07f2a32/src/net/cooperi/pivapplet/PivApplet.java#L2849
+        return comm.reply(StatusWords::FileNotFound);
+    }
+
+    if data[4] != 0x0D {
+        // Todo: handle multiple slots
+        return comm.reply(StatusWords::FileNotFound);
+    }
+
+    // Todo: replay data
     comm.reply_ok();
 }
 
 /// Get ledger serial
-
 const LEDGER_SERIAL_SIZE: usize = 7;
 
 fn get_ledger_serial() -> [u8; LEDGER_SERIAL_SIZE] {
@@ -226,26 +239,9 @@ fn process_get_serial(comm: &mut io::Comm) {
     }
 
     let ldg_serial = get_ledger_serial();
-    let age_serial = [
-        ldg_serial[0],
-        ldg_serial[2],
-        ldg_serial[4],
-        ldg_serial[6]
-    ];
+    let age_serial = [ldg_serial[0], ldg_serial[2], ldg_serial[4], ldg_serial[6]];
 
     comm.append(&age_serial);
-    comm.reply_ok();
-}
-
-/// Reset card content
-///
-/// Clear all slots, all tags and regenerate guid, card id and serial.
-fn process_reset(comm: &mut io::Comm) {
-    if comm.get_p1() != 0x00 || comm.get_p2() != 0x00 {
-        return comm.reply(StatusWords::IncorrectP1P2);
-    }
-
-    // TODO
     comm.reply_ok();
 }
 
@@ -271,22 +267,18 @@ extern "C" fn sample_main() {
     loop {
         match comm.next_event() {
             io::Event::Button(ButtonEvent::BothButtonsRelease) => nanos_sdk::exit_app(0),
-            io::Event::Button(_) => {},
+            io::Event::Button(_) => {}
 
             // Standard PIV commands
             // See https://csrc.nist.gov/publications/detail/sp/800-73/4/final
             io::Event::Command(0xA4) => process_select_card(&mut comm),
-            io::Event::Command(0x47) => process_gen_asym(&mut comm),
             io::Event::Command(0x87) => process_general_auth(&mut comm),
             io::Event::Command(0xC0) => continue_response(&mut comm),
             io::Event::Command(0xCB) => process_get_data(&mut comm),
-            io::Event::Command(0xDB) => process_put_data(&mut comm),
 
             // YubicoPIV extensions
             // See https://developers.yubico.com/PIV/Introduction/Yubico_extensions.html
-            io::Event::Command(0xf7) => process_get_metadata(&mut comm),
             io::Event::Command(0xf8) => process_get_serial(&mut comm),
-            io::Event::Command(0xfb) => process_reset(&mut comm),
             io::Event::Command(0xfd) => process_get_version(&mut comm),
 
             io::Event::Command(_) => comm.reply(StatusWords::FuncNotSupported),

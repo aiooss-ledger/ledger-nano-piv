@@ -22,3 +22,6 @@ def test_get_serial():
 
 def test_get_version():
     exchange_and_expect('00fd000000', '050400')
+
+def test_get_data():
+    exchange_and_expect('00cb3fff055c035fc10d', '')
