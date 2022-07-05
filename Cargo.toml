@@ -5,6 +5,7 @@ authors = ["yhql", "Alexandre Iooss"]
 edition = "2021"
 
 [dependencies]
+heapless = "0.7.15"
 nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk/", branch = "unified_build" }
 
 [profile.release]

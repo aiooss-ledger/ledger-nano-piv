@@ -12,26 +12,27 @@ mod screen_util;
 
 use layout::*;
 
+use heapless::Vec;
+
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
 
 /// Status Words as specified in table 6 of Interfaces for Personal Identity
 /// Verification specification.
 #[derive(Copy, Clone)]
-// #[repr(u16)]
 enum StatusWords {
     MoreDataAvailable(u8),
-    // VerificationFailed = 0x6300,
     WrongLength,
+    WrongData,
+    FuncNotSupported,
+    FileNotFound,
+    IncorrectP1P2,
+    // VerificationFailed = 0x6300,
     // SecureMessagingNotSupported = 0x6882,
     // SecurityStatusNotSatisfied = 0x6982,
     // AuthMethodBlocked = 0x6983,
     // MissingSecureMessagingData = 0x6987,
     // IncorrectSecureMessagingData = 0x6988,
-    WrongData,
-    FuncNotSupported,
-    FileNotFound,
     // FileFull = 0x6A84,
-    IncorrectP1P2,
     // RefDataNotFound = 0x6A88,
 }
 
@@ -60,22 +61,20 @@ const APDU_MAX_CHUNK_SIZE: usize = 255;
 const DATA_RESP_BUFFER_SIZE: usize = 512;
 
 struct DataResponseBuffer {
-    data: [u8; DATA_RESP_BUFFER_SIZE],
-    data_len: usize,
+    data: Vec<u8, DATA_RESP_BUFFER_SIZE>,
     read_cnt: usize,
 }
 
 impl DataResponseBuffer {
     fn new() -> Self {
         Self {
-            data: [0; DATA_RESP_BUFFER_SIZE],
-            data_len: 0,
+            data: Vec::new(),
             read_cnt: 0,
         }
     }
 
     fn remaining_length(&self) -> usize {
-        self.data_len - self.read_cnt
+        self.data.len() - self.read_cnt
     }
 
     fn set(&mut self, data: &[u8]) {
@@ -83,8 +82,8 @@ impl DataResponseBuffer {
         let copied_length = data.len().min(DATA_RESP_BUFFER_SIZE);
 
         // Copy data content
-        (self.data[0..copied_length]).copy_from_slice(&data[0..copied_length]);
-        self.data_len = data.len();
+        self.data.clear();
+        self.data.extend_from_slice(&data[0..copied_length]).unwrap();
 
         // Init read counter
         self.read_cnt = 0;
@@ -223,8 +222,7 @@ fn compute_get_data_content(data_response_buffer: &mut DataResponseBuffer) {
     0x00, 0xfe, 0x00,
     ];
 
-    // // Set data response buffer
-    // let hardcoded = [0;500];
+    // Set data response buffer
     data_response_buffer.set(&hardcoded);
 }
 
