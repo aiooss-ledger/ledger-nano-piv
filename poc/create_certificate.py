@@ -10,8 +10,17 @@ from cryptography.x509 import load_der_x509_certificate
 
 from decode_get_data import decode_getdata_response
 
-# TODO
-my_private_key = 42
+# Use https://github.com/ebellocchia/bip_utils : pip3 install bip_utils
+import bip_utils
+
+SEED = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+DERIV_PATH = "m/5261654'/0'/0'/130'"
+
+my_seed = bip_utils.bip.bip39.Bip39SeedGenerator(SEED).Generate()
+# my_path = bip_utils.bip.bip32.Bip32PathParser(DERIV_PATH)
+my_private_key = bip_utils.bip.bip32.Bip32Nist256p1.FromSeedAndPath(my_seed, DERIV_PATH).PrivateKey().Raw().ToInt()
+
+# my_private_key = 42
 
 certificate_template = bytes.fromhex("""
     308201b230820159
