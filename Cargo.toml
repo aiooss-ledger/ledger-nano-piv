@@ -20,3 +20,7 @@ curve = "secp256k1"
 flags = "0"
 icon = "piv.gif"
 path = ""
+
+[features]
+default = [ "speculos" ]
+speculos = [ "nanos_sdk/speculos" ]

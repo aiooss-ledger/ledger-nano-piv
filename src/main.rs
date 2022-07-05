@@ -27,6 +27,8 @@ mod screen_util;
 
 mod error;
 mod comm;
+#[macro_use]
+mod logging;
 
 
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
@@ -221,7 +223,7 @@ fn process_get_version(comm: &mut Comm) -> Result<(), PIVError> {
     Ok(())
 }
 
-#[derive(FromPrimitive)]
+#[derive(FromPrimitive, Debug)]
 enum PIVCommand {
     // Standard PIV commands
     // See https://csrc.nist.gov/publications/detail/sp/800-73/4/final
@@ -240,6 +242,8 @@ enum PIVCommand {
 extern "C" fn sample_main() {
     let mut comm = Comm::new();
 
+    info!("PIV {} starting", env!("CARGO_PKG_VERSION"));
+
     // erase screen
     screen_util::fulldraw(0, 0, &bitmaps::BLANK);
     bitmaps::PADLOCK.draw(64 - (bitmaps::PADLOCK.width as i32) / 2, 4);
@@ -253,13 +257,16 @@ extern "C" fn sample_main() {
             Event::Command(command) => {
                 let res = match PIVCommand::from_u8(command) {
                     None => Err(PIVError::FuncNotSupported),
-                    Some(command) => match command {
-                        PIVCommand::SelectCard => process_select_card(&mut comm),
-                        PIVCommand::GeneralAuth => process_general_auth(&mut comm),
-                        PIVCommand::ContinueResponse => continue_response(&mut comm),
-                        PIVCommand::GetData => process_get_data(&mut comm),
-                        PIVCommand::GetSerial => process_get_serial(&mut comm),
-                        PIVCommand::GetVersion => process_get_version(&mut comm),
+                    Some(command) => {
+                        trace!("processing command {:?}", command);
+                        match command {
+                            PIVCommand::SelectCard => process_select_card(&mut comm),
+                            PIVCommand::GeneralAuth => process_general_auth(&mut comm),
+                            PIVCommand::ContinueResponse => continue_response(&mut comm),
+                            PIVCommand::GetData => process_get_data(&mut comm),
+                            PIVCommand::GetSerial => process_get_serial(&mut comm),
+                            PIVCommand::GetVersion => process_get_version(&mut comm),
+                        }
                     }
                 };
                 comm.reply(res.into_reply())
