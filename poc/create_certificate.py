@@ -123,4 +123,5 @@ decode_getdata_response(payload)
 # Dump hexa
 print("Dump:")
 for i in range(0, len(payload), 16):
-    print(f"    {payload[i:i + 16].hex()}")
+    line = [f"0x{c:02x}" for c in payload[i:i + 16]]
+    print(f"    {', '.join(line)},")
