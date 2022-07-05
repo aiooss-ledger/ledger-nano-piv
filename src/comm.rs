@@ -41,11 +41,25 @@ pub trait IntoReply {
     fn into_reply(self) -> Reply;
 }
 
-impl IntoReply for Result<(), PIVError> {
+impl IntoReply for Result<PIVReply, PIVError> {
     fn into_reply(self) -> Reply {
         match self {
-            Ok(_) => Reply(StatusWords::Ok as u16),
-            Err(e) => e.into()
+            Ok(reply) => reply.into(),
+            Err(error) => error.into()
         }
+    }
+}
+
+pub enum PIVReply {
+    Ok,
+    MoreDataAvailable(u8),
+}
+
+impl Into<Reply> for PIVReply {
+    fn into(self) -> Reply {
+        Reply(match self {
+            PIVReply::Ok => StatusWords::Ok as u16,
+            PIVReply::MoreDataAvailable(size) => 0x6100 + (size as u16)
+        })
     }
 }

@@ -1,5 +1,6 @@
 from ledgerblue.commTCP import getDongle as getDongleTCP
 from ledgerblue.comm import getDongle
+from ledgerblue.hexLoader import HexLoader
 
 SPECULOS = True
 
@@ -7,6 +8,8 @@ if SPECULOS:
     d = getDongleTCP(port=9999)  # Speculos
 else:
     d = getDongle()  # Nano
+
+hex_loader = HexLoader(d)
 
 def exchange_and_expect(input_hex: str, expected_output_hex: str):
     print(f'\n-> {input_hex}')
@@ -24,4 +27,5 @@ def test_get_version():
     exchange_and_expect('00fd000000', '050400')
 
 def test_get_data():
-    exchange_and_expect('00cb3fff055c035fc10d', '')
+    expected = "A5" * 512
+    exchange_and_expect('00cb3fff055c035fc10d', expected)

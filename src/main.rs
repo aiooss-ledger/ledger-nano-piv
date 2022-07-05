@@ -17,7 +17,7 @@ use num::FromPrimitive;
 
 use layout::*;
 
-use crate::comm::{CommExt, IntoReply};
+use crate::comm::{CommExt, IntoReply, PIVReply};
 use crate::error::PIVError;
 
 mod bitmaps;
@@ -29,7 +29,6 @@ mod error;
 mod comm;
 #[macro_use]
 mod logging;
-
 
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
 
@@ -49,7 +48,6 @@ fn ecdh(
     p: &[u8],
     p_len: u32,
 ) -> Option<([u8; 0x20])> {
-
     let mut secret = [0u8; 0x20];
     //let secret_len = &mut (secret.len() as u32);
     let len = unsafe {
@@ -59,7 +57,7 @@ fn ecdh(
             p.as_ptr(),
             p_len,
             secret.as_mut_ptr(),
-            0x20
+            0x20,
         )
     };
     if len != CX_OK {
@@ -69,8 +67,47 @@ fn ecdh(
     }
 }
 
+const APDU_MAX_CHUNK_SIZE: usize = 255;
+const DATA_RESP_BUFFER_SIZE: usize = 512;
+
+struct DataResponseBuffer {
+    data: [u8; DATA_RESP_BUFFER_SIZE],
+    read_cnt: usize,
+}
+
+impl DataResponseBuffer {
+    fn new() -> Self {
+        Self {
+            data: [0; DATA_RESP_BUFFER_SIZE],
+            read_cnt: 0,
+        }
+    }
+
+    fn remaining_length(&self) -> usize {
+        DATA_RESP_BUFFER_SIZE - self.read_cnt
+    }
+
+    fn set(&mut self, data: &[u8]) {
+        let copied_length = data.len().min(DATA_RESP_BUFFER_SIZE);
+        self.data.copy_from_slice(&data[0..copied_length]);
+        self.read_cnt = 0;
+    }
+
+    fn get_next_chunk_size(&self) -> usize {
+        APDU_MAX_CHUNK_SIZE.min(self.remaining_length())
+    }
+
+    fn read_next_chunk(&mut self) -> &[u8] {
+        let read_length = self.get_next_chunk_size();
+        let begin = self.read_cnt;
+        let end = self.read_cnt + read_length;
+        self.read_cnt += read_length;
+        &self.data[begin..end]
+    }
+}
+
 /// Select card command
-fn process_select_card(comm: &mut Comm) -> Result<(), PIVError> {
+fn process_select_card(comm: &mut Comm) -> Result<PIVReply, PIVError> {
     comm.expect_parameters(0x04, 0x00)?;
     comm.expect_data(&PIV_APP_AID)?;
 
@@ -78,11 +115,11 @@ fn process_select_card(comm: &mut Comm) -> Result<(), PIVError> {
         0x61, 0x11, 0x4f, 0x06, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00, 0x79, 0x07, 0x4f, 0x05,
     ]);
     comm.append(&PIV_APP_AID);
-    Ok(())
+    Ok(PIVReply::Ok)
 }
 
 /// General Authenticate card command
-fn process_general_auth(comm: &mut Comm) -> Result<(), PIVError> {
+fn process_general_auth(comm: &mut Comm) -> Result<PIVReply, PIVError> {
     let (alg, key) = comm.parameters();
 
     // Right now, we only support Secp256r1
@@ -140,23 +177,36 @@ fn process_general_auth(comm: &mut Comm) -> Result<(), PIVError> {
     comm.append(&[0x7c, 0x22, 0x82, 0x20]);
     comm.append(&secret);
 
-    Ok(())
+    Ok(PIVReply::Ok)
+}
+
+fn compute_continue_response(comm: &mut Comm, data_response_buffer: &mut DataResponseBuffer) -> Result<PIVReply, PIVError> {
+    if data_response_buffer.get_next_chunk_size() == 0 {
+        // No data to respond
+        return Ok(PIVReply::Ok);
+    }
+
+    // Read data
+    comm.append(data_response_buffer.read_next_chunk());
+
+    // Reply status
+    let next_size = data_response_buffer.get_next_chunk_size();
+    return if next_size > 0 {
+        Ok(PIVReply::MoreDataAvailable(next_size as u8))
+    } else {
+        Ok(PIVReply::Ok)
+    };
 }
 
 /// Ask the card to continue to answer
-fn continue_response(comm: &mut Comm) -> Result<(), PIVError> {
+fn process_continue_response(comm: &mut Comm, data_response_buffer: &mut DataResponseBuffer) -> Result<PIVReply, PIVError> {
     comm.expect_parameters(0x00, 0x00)?;
 
-    // TODO
-    Ok(())
+    compute_continue_response(comm, data_response_buffer)
 }
 
-// Process get data
-fn process_get_data(comm: &mut Comm) -> Result<(), PIVError> {
-    comm.expect_parameters(0x3F, 0xFF)?;
-
-    let data = comm.data()?;
-
+/// Check 'get data' command parameters
+fn check_get_data_params(data: &[u8]) -> Result<(), PIVError> {
     let tag = data[0];
     let len = data[1];
 
@@ -186,8 +236,30 @@ fn process_get_data(comm: &mut Comm) -> Result<(), PIVError> {
         return Err(PIVError::FileNotFound);
     }
 
-    // Todo: replay data
     Ok(())
+}
+
+fn compute_get_data_content(data_response_buffer: &mut DataResponseBuffer) {
+    // Compute data buffer: todo
+    let hardcoded = [0xA5; 512];
+
+    // Set data response buffer
+    data_response_buffer.set(&hardcoded);
+}
+
+fn process_get_data(comm: &mut Comm, data_response_buffer: &mut DataResponseBuffer) -> Result<PIVReply, PIVError> {
+    comm.expect_parameters(0x3F, 0xFF)?;
+
+    let data = comm.data()?;
+
+    // Check params
+    check_get_data_params(data)?;
+
+    // Compute get data content
+    compute_get_data_content(data_response_buffer);
+
+    // Response
+    compute_continue_response(comm, data_response_buffer)
 }
 
 /// Get ledger serial
@@ -204,23 +276,23 @@ fn get_ledger_serial() -> [u8; LEDGER_SERIAL_SIZE] {
 }
 
 /// Get card serial
-fn process_get_serial(comm: &mut Comm) -> Result<(), PIVError> {
+fn process_get_serial(comm: &mut Comm) -> Result<PIVReply, PIVError> {
     comm.expect_parameters(0x00, 0x00)?;
 
     let ldg_serial = get_ledger_serial();
     let age_serial = [ldg_serial[0], ldg_serial[2], ldg_serial[4], ldg_serial[6]];
 
     comm.append(&age_serial);
-    Ok(())
+    Ok(PIVReply::Ok)
 }
 
 /// Get card version
-fn process_get_version(comm: &mut Comm) -> Result<(), PIVError> {
+fn process_get_version(comm: &mut Comm) -> Result<PIVReply, PIVError> {
     comm.expect_parameters(0x00, 0x00)?;
 
     // Same answer as Yubikey 5.4 firmware
     comm.append(&[5, 4, 0]);
-    Ok(())
+    Ok(PIVReply::Ok)
 }
 
 #[derive(FromPrimitive, Debug)]
@@ -250,6 +322,8 @@ extern "C" fn sample_main() {
     "*PIV*".display(Line::Second, Layout::Centered);
     env!("CARGO_PKG_VERSION").display(Line::Third, Layout::Centered);
 
+    let mut data_response_buffer = DataResponseBuffer::new();
+
     loop {
         match comm.next_event() {
             Event::Button(ButtonEvent::BothButtonsRelease) => nanos_sdk::exit_app(0),
@@ -262,8 +336,8 @@ extern "C" fn sample_main() {
                         match command {
                             PIVCommand::SelectCard => process_select_card(&mut comm),
                             PIVCommand::GeneralAuth => process_general_auth(&mut comm),
-                            PIVCommand::ContinueResponse => continue_response(&mut comm),
-                            PIVCommand::GetData => process_get_data(&mut comm),
+                            PIVCommand::ContinueResponse => process_continue_response(&mut comm, &mut data_response_buffer),
+                            PIVCommand::GetData => process_get_data(&mut comm, &mut data_response_buffer),
                             PIVCommand::GetSerial => process_get_serial(&mut comm),
                             PIVCommand::GetVersion => process_get_version(&mut comm),
                         }
