@@ -4,6 +4,11 @@
 use nanos_sdk::bindings::os_serial;
 use nanos_sdk::buttons::ButtonEvent;
 use nanos_sdk::io;
+use nanos_sdk::bindings::cx_ecdh_no_throw;
+use nanos_sdk::io::SyscallError;
+use nanos_sdk::bindings::{CX_ECDH_POINT, CX_OK};
+use nanos_sdk::bindings::cx_ecfp_private_key_t;
+use nanos_sdk::ecc::CurvesId;
 
 mod bitmaps;
 mod fonts;
@@ -41,6 +46,40 @@ impl From<StatusWords> for io::Reply {
 }
 
 const PIV_APP_AID: [u8; 5] = [0xa0, 0x00, 0x00, 0x03, 0x08];
+const BIP32_PATH: [u32; 5] = nanos_sdk::ecc::make_bip32_path(b"m/5261654'/0'/0'/130'");
+
+/// Helper function that derives the seed over Secp256r1
+fn bip32_derive_secp256r1(path: &[u32]) -> Result<[u8; 32], SyscallError> {
+    let mut raw_key = [0u8; 32];
+    nanos_sdk::ecc::bip32_derive(CurvesId::Secp256r1, path, &mut raw_key)?;
+    Ok(raw_key)
+}
+
+fn ecdh(
+    pvkey: &cx_ecfp_private_key_t,
+    mode: u32,
+    p: &[u8],
+    p_len: u32,
+) -> Option<([u8; 0x20])> {
+
+    let mut secret = [0u8; 0x20];
+    //let secret_len = &mut (secret.len() as u32);
+    let len = unsafe {
+        cx_ecdh_no_throw(
+            pvkey,
+            mode,
+            p.as_ptr(),
+            p_len,
+            secret.as_mut_ptr(),
+            0x20
+        )
+    };
+    if len != CX_OK {
+        None
+    } else {
+        Some(secret)
+    }
+}
 
 /// Select card command
 fn process_select_card(comm: &mut io::Comm) {
@@ -62,7 +101,64 @@ fn process_select_card(comm: &mut io::Comm) {
 
 /// General Authenticate card command
 fn process_general_auth(comm: &mut io::Comm) {
-    // TODO
+    let alg = comm.get_p1();
+    let key = comm.get_p2();
+
+    // Right now, we only support Secp256r1
+    if alg != 0x11 {
+        return comm.reply(StatusWords::FuncNotSupported);
+    }
+
+    // Right now, we only support retired slots
+    if !(0x82 <= key && key <= 0x8C) {
+        return comm.reply(StatusWords::FuncNotSupported);
+    }
+
+    let d = match comm.get_data() {
+        Ok(d) => d,
+        Err(_) => {
+            return comm.reply(StatusWords::WrongData);
+        }
+    };
+
+    // Outer layer
+    if d[0] != 0x7c {
+        return comm.reply(StatusWords::WrongData);
+    }
+
+    let length = d[1] as usize;
+    let d = &d[2..2+length];
+
+    // Empty tlv (???)
+    if d[0] != 0x82 || d[1] != 0 {
+        return comm.reply(StatusWords::WrongData);
+    }
+    let d = &d[2..];
+
+    // Diffie-Hellman packet
+    if d[0] != 0x85 {
+        return comm.reply(StatusWords::WrongData);
+    }
+    let length = d[1] as usize;
+
+    if length != 0x41 {
+        return comm.reply(StatusWords::WrongData);
+    }
+
+    let d = &d[2..];
+    // EC point
+    if d[0] != 0x04 {
+        return comm.reply(StatusWords::WrongData);
+    }
+
+    let raw_key = bip32_derive_secp256r1(&BIP32_PATH).unwrap();
+    let pk = nanos_sdk::ecc::ec_init_key(CurvesId::Secp256r1, &raw_key).unwrap();
+
+    let secret = ecdh(&pk, CX_ECDH_POINT, d, 0x41).unwrap();
+
+    comm.append(&[0x7c, 0x22, 0x82, 0x20]);
+    comm.append(&secret);
+
     comm.reply_ok();
 }
 
