@@ -262,7 +262,7 @@ extern "C" fn sample_main() {
     // erase screen
     screen_util::fulldraw(0, 0, &bitmaps::BLANK);
     bitmaps::PADLOCK.draw(64 - (bitmaps::PADLOCK.width as i32) / 2, 4);
-    "*PIV* app".display(Line::Second, Layout::Centered);
+    "*PIV* ready".display(Line::Second, Layout::Centered);
     loop {
         match comm.next_event() {
             io::Event::Button(ButtonEvent::BothButtonsRelease) => nanos_sdk::exit_app(0),
