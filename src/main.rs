@@ -4,7 +4,6 @@
 use nanos_sdk::bindings::os_serial;
 use nanos_sdk::buttons::ButtonEvent;
 use nanos_sdk::io;
-use nanos_sdk::bindings::{os_serial};
 use nanos_sdk::bindings::cx_ecdh_no_throw;
 use nanos_sdk::io::SyscallError;
 use nanos_sdk::bindings::{CX_ECDH_POINT, CX_OK};
