@@ -1,7 +1,5 @@
-from cmath import exp
 from ledgerblue.commTCP import getDongle as getDongleTCP
 from ledgerblue.comm import getDongle
-from ledgerblue.hexLoader import HexLoader
 
 SPECULOS = True
 
@@ -10,20 +8,25 @@ if SPECULOS:
 else:
     d = getDongle()  # Nano
 
+
 def exchange_and_expect(input_hex: str, expected_output_hex: str):
-    print(f'\n-> {input_hex}')
+    print(f"\n-> {input_hex}")
     r = d.exchange(bytes.fromhex(input_hex))
-    print(f'<- {r.hex()}')
+    print(f"<- {r.hex()}")
     assert r.hex() == expected_output_hex.lower()
 
+
 def test_select_card():
-    exchange_and_expect('00a4040005a000000308', '61114f0600001000010079074f05a000000308')
+    exchange_and_expect("00a4040005a000000308", "61114f0600001000010079074f05a000000308")
+
 
 def test_get_serial():
-    exchange_and_expect('00f8000000', '1234'.encode('utf-8').hex())
+    exchange_and_expect("00f8000000", b"1234".hex())
+
 
 def test_get_version():
-    exchange_and_expect('00fd000000', '050400')
+    exchange_and_expect("00fd000000", "050400")
+
 
 def test_get_data():
     expected = bytes([0x53, 0x82, 0x01, 0xbf, 0x70, 0x82, 0x01, 0xb6, 0x30, 0x82, 0x01, 0xb2, 0x30, 0x82, 0x01, 0x59,
@@ -56,4 +59,4 @@ def test_get_data():
     0xc4, 0xfe, 0xd6, 0x57, 0xb4, 0x75, 0xdc, 0x9a, 0x46, 0x79, 0x0d, 0x37, 0x7a, 0x51, 0x71, 0x01,
     0x00, 0xfe, 0x00]).hex()
 
-    exchange_and_expect('00cb3fff055c035fc10d', expected)
+    exchange_and_expect("00cb3fff055c035fc10d", expected)
