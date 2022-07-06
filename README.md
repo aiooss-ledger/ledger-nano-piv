@@ -13,9 +13,27 @@ During the Hackathon we made some choices:
 
 ## Building
 
-The code has been tested using Rust Nighly (2022-06-19).
+If you have never used Rust on your machine, you might start by
+[installing rustup](https://www.rust-lang.org/tools/install).
 
+This application requires Rust Nightly and some C headers,
+```bash
+rustup default nightly
+rustup component add rust-src
+
+# On Ubuntu
+sudo apt install clang gcc-arm-none-eabi gcc-multilib
+
+# On Fedora
+sudo dnf install clang arm-none-eabi-gcc arm-none-eabi-newlib
+
+# On ArchLinux
+sudo pacman -S clang arm-none-eabi-gcc arm-none-eabi-newlib
 ```
+
+Then you should be able to build this application,
+```bash
+cd /path/to/ledger-nano-piv/
 cargo build --release
 ```
 
