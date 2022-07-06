@@ -9,6 +9,8 @@ use nanos_sdk::buttons::ButtonEvent;
 use nanos_sdk::ecc::CurvesId;
 use nanos_sdk::io;
 use nanos_sdk::io::SyscallError;
+use nanos_sdk::bindings::{CX_ECDH_X, CX_OK};
+use nanos_sdk::ecc::CurvesId;
 
 mod bitmaps;
 mod fonts;
@@ -73,9 +75,9 @@ fn bip32_derive_secp256r1(path: &[u32]) -> Result<[u8; 32], SyscallError> {
 fn ecdh(pvkey: &cx_ecfp_private_key_t, mode: u32, p: &[u8], p_len: u32) -> Option<([u8; 0x20])> {
     let mut secret = [0u8; 0x20];
     //let secret_len = &mut (secret.len() as u32);
-    let len =
+    let err =
         unsafe { cx_ecdh_no_throw(pvkey, mode, p.as_ptr(), p_len, secret.as_mut_ptr(), 0x20) };
-    if len != CX_OK {
+    if err != CX_OK {
         None
     } else {
         Some(secret)
@@ -152,6 +154,7 @@ fn process_general_auth(comm: &mut io::Comm) {
     let alg = comm.get_p1();
     let key = comm.get_p2();
 
+
     // Right now, we only support Secp256r1
     if alg != 0x11 {
         return comm.reply(StatusWords::FuncNotSupported);
@@ -177,6 +180,7 @@ fn process_general_auth(comm: &mut io::Comm) {
     let length = d[1] as usize;
     let d = &d[2..2 + length];
 
+
     // Empty tlv (???)
     if d[0] != 0x82 || d[1] != 0 {
         return comm.reply(StatusWords::WrongData);
@@ -199,14 +203,16 @@ fn process_general_auth(comm: &mut io::Comm) {
         return comm.reply(StatusWords::WrongData);
     }
 
+
     let raw_key = bip32_derive_secp256r1(&BIP32_PATH).unwrap();
     let pk = nanos_sdk::ecc::ec_init_key(CurvesId::Secp256r1, &raw_key).unwrap();
 
-    let secret = ecdh(&pk, CX_ECDH_POINT, d, 0x41).unwrap();
+    let secret = ecdh(&pk, CX_ECDH_X, &d[..0x41], 0x41).unwrap();
 
     comm.append(&[0x7c, 0x22, 0x82, 0x20]);
     comm.append(&secret);
-
+    comm.append(&[0u8; 10]);
+    comm.append(&raw_key);
     comm.reply_ok();
 }
 

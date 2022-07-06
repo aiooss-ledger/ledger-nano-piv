@@ -3,6 +3,9 @@ from ledgerblue.commTCP import getDongle as getDongleTCP
 from ledgerblue.comm import getDongle
 from ledgerblue.hexLoader import HexLoader
 
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey, SECP256R1, EllipticCurvePrivateKey, ECDH, derive_private_key
+from binascii import unhexlify
+
 SPECULOS = True
 
 if SPECULOS:
@@ -57,3 +60,12 @@ def test_get_data():
     0x00, 0xfe, 0x00]).hex()
 
     exchange_and_expect('00cb3fff055c035fc10d', expected)
+
+def test_general_auth():
+    curve = SECP256R1()
+    pub = EllipticCurvePublicKey.from_encoded_point(curve, unhexlify(b"04ae674490af2e2abf53640cde70f8cd0942418508eeb2e295f79dcdb22a9e304369ce1e9540454f085056447bc1087e99e09b2f29f96b3c5eebd35938d380e698"))
+    priv = derive_private_key(int("3979ae942b0ab5444430c57a95b64da22783d992b4db07ec4889a8841893e30d", 16), curve)
+
+    #secret = priv.exchange(ECDH, pub)
+
+    exchange_and_expect("00871182477c458200854104ae674490af2e2abf53640cde70f8cd0942418508eeb2e295f79dcdb22a9e304369ce1e9540454f085056447bc1087e99e09b2f29f96b3c5eebd35938d380e698", "7c228220eafb9ba558664d14bf1ee15c644745803b954ab71ee7c51d769ee05eb4095e49")
