@@ -17,24 +17,23 @@ jobs:
         uses: fiam/arm-none-eabi-gcc@v1.0.3
         with:
           release: '9-2019-q4'
-      - uses: actions/checkout@v2
-      - name: Install thumbv6 target
+      - name: Install clang
+        run: sudo apt-get update && sudo apt install -y clang
+      - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
-          override: true
-          target: thumbv6m-none-eabi
+          components: rust-src, rustfmt, clippy
+      - uses: actions/checkout@v2
       - name: Cargo build
         uses: actions-rs/cargo@v1
         with:
           command: build
-      - run: rustup component add clippy
       - name: Cargo clippy
         uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: -- -D warnings
-      - run: rustup component add rustfmt
       - name: Cargo fmt
         uses: actions-rs/cargo@v1
         with:
