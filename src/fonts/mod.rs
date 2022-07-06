@@ -60,7 +60,7 @@ impl Displayable for &str {
         let total_width = self
             .as_bytes()
             .iter()
-            .map(|c| pic_rs(c))
+            .map(pic_rs)
             .fold(0u8, |acc, c| match *c {
                 b'*' => {
                     font_choice ^= 1;
@@ -75,7 +75,7 @@ impl Displayable for &str {
             Layout::Centered => 64 - total_width / 2,
         } as i32;
 
-        for c in self.as_bytes().iter().map(|c| pic_rs(c)) {
+        for c in self.as_bytes().iter().map(pic_rs) {
             if *c == b'*' {
                 font_choice ^= 1;
                 continue;
