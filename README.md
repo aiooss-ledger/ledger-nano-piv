@@ -1,8 +1,19 @@
 # Ledger Nano PIV Application
 
-TODO
+This is a Ledger Hackathon project targetted on building a PIV compatible
+Ledger Nano X/S+ application.
+
+The focus of this application is to be compatible with AGE Yubikey plugin.
+
+During the Hackathon we made some choices:
+
+  * The application is stateless.
+    Retired slots value are derived from the seed.
+  * No PIN or PUK as the Ledger Nano operating system already prompt a PIN.
 
 ## Building
+
+The code has been tested using Rust Nighly (2022-06-19).
 
 ```
 cargo build --release

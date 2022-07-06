@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 heapless = "0.7.15"
-nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk/", branch = "unified_build" }
+nanos_sdk = { git = "https://github.com/aiooss-ledger/ledger-nanos-sdk/", branch = "ccid" }
 
 [profile.release]
 opt-level = 0
@@ -16,4 +16,4 @@ lto = true
 curve = "secp256k1"
 flags = "0"
 icon = "piv.gif"
-path = ""
+path = "m/5261654'"
