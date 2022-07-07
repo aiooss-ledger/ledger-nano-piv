@@ -1,6 +1,6 @@
 # Ledger Nano PIV Application
 
-This is a Ledger Hackathon project targetted on building a PIV compatible
+This is a Ledger Hackathon project targeted on building a PIV compatible
 Ledger Nano X/S+ application.
 
 The focus of this application is to be compatible with AGE Yubikey plugin.

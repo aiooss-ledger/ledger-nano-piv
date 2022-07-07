@@ -210,18 +210,18 @@ fn process_general_auth(comm: &mut io::Comm) {
     comm.reply_ok();
 }
 
-fn compute_continue_response(comm: &mut io::Comm, data_response_buffer: &mut DataResponseBuffer) {
-    if data_response_buffer.get_next_chunk_size() == 0 {
+fn compute_continue_response(comm: &mut io::Comm, response_buffer: &mut DataResponseBuffer) {
+    if response_buffer.get_next_chunk_size() == 0 {
         // No data to respond
         comm.reply_ok();
         return;
     }
 
     // Read data
-    comm.append(data_response_buffer.read_next_chunk());
+    comm.append(response_buffer.read_next_chunk());
 
     // Reply status
-    let next_size = data_response_buffer.get_next_chunk_size();
+    let next_size = response_buffer.get_next_chunk_size();
     if next_size > 0 {
         comm.reply(StatusWords::MoreDataAvailable(next_size as u8));
     } else {
@@ -230,12 +230,12 @@ fn compute_continue_response(comm: &mut io::Comm, data_response_buffer: &mut Dat
 }
 
 /// Ask the card to continue to answer
-fn process_continue_response(comm: &mut io::Comm, data_response_buffer: &mut DataResponseBuffer) {
+fn process_continue_response(comm: &mut io::Comm, response_buffer: &mut DataResponseBuffer) {
     if comm.get_p1() != 0x00 || comm.get_p2() != 0x00 {
         return comm.reply(StatusWords::IncorrectP1P2);
     }
 
-    compute_continue_response(comm, data_response_buffer);
+    compute_continue_response(comm, response_buffer);
 }
 
 /// Check 'get data' command parameters
@@ -272,7 +272,7 @@ fn check_get_data_params(data: &[u8]) -> Option<StatusWords> {
     None
 }
 
-fn compute_get_data_content(data_response_buffer: &mut DataResponseBuffer) {
+fn compute_get_data_content(response_buffer: &mut DataResponseBuffer) {
     // Compute data buffer: todo
     let hardcoded = [
         0x53, 0x82, 0x01, 0xbf, 0x70, 0x82, 0x01, 0xb6, 0x30, 0x82, 0x01, 0xb2, 0x30, 0x82, 0x01,
@@ -309,10 +309,10 @@ fn compute_get_data_content(data_response_buffer: &mut DataResponseBuffer) {
     ];
 
     // Set data response buffer
-    data_response_buffer.set(&hardcoded);
+    response_buffer.set(&hardcoded);
 }
 
-fn process_get_data(comm: &mut io::Comm, data_response_buffer: &mut DataResponseBuffer) {
+fn process_get_data(comm: &mut io::Comm, response_buffer: &mut DataResponseBuffer) {
     if comm.get_p1() != 0x3F || comm.get_p2() != 0xFF {
         return comm.reply(StatusWords::IncorrectP1P2);
     }
@@ -330,10 +330,10 @@ fn process_get_data(comm: &mut io::Comm, data_response_buffer: &mut DataResponse
     }
 
     // Compute get data content
-    compute_get_data_content(data_response_buffer);
+    compute_get_data_content(response_buffer);
 
     // Response
-    compute_continue_response(comm, data_response_buffer);
+    compute_continue_response(comm, response_buffer);
 }
 
 /// Get ledger serial
@@ -377,12 +377,15 @@ fn process_get_version(comm: &mut io::Comm) {
 extern "C" fn sample_main() {
     let mut comm = io::Comm::new();
 
-    // erase screen
+    // Erase screen and show message
     screen_util::fulldraw(0, 0, &bitmaps::BLANK);
     bitmaps::PADLOCK.draw(64 - (bitmaps::PADLOCK.width as i32) / 2, 4);
     "*PIV* ready".display(Line::Second, Layout::Centered);
 
-    let mut data_response_buffer = DataResponseBuffer::new();
+    // When response is split across multiple APDU packets, remaining length to
+    // read is sent to the host in the status word. The host ask the card to
+    // continue the response with 0xC0 instruction.
+    let mut response_buffer = DataResponseBuffer::new();
 
     loop {
         match comm.next_event() {
@@ -393,10 +396,8 @@ extern "C" fn sample_main() {
             // See https://csrc.nist.gov/publications/detail/sp/800-73/4/final
             io::Event::Command(0xA4) => process_select_card(&mut comm),
             io::Event::Command(0x87) => process_general_auth(&mut comm),
-            io::Event::Command(0xC0) => {
-                process_continue_response(&mut comm, &mut data_response_buffer)
-            }
-            io::Event::Command(0xCB) => process_get_data(&mut comm, &mut data_response_buffer),
+            io::Event::Command(0xC0) => process_continue_response(&mut comm, &mut response_buffer),
+            io::Event::Command(0xCB) => process_get_data(&mut comm, &mut response_buffer),
 
             // YubicoPIV extensions
             // See https://developers.yubico.com/PIV/Introduction/Yubico_extensions.html
