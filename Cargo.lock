@@ -160,7 +160,7 @@ checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 [[package]]
 name = "nanos_sdk"
 version = "0.1.0"
-source = "git+https://github.com/aiooss-ledger/ledger-nanos-sdk/?branch=ccid#0943463e6c859216647cff000180612ebe7d448d"
+source = "git+https://github.com/aiooss-ledger/ledger-nanos-sdk/?branch=ccid#558e3a18b39223e541bf17a11276a6f6de5219f3"
 dependencies = [
  "cc",
  "num-traits",
