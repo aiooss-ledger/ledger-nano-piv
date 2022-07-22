@@ -61,6 +61,12 @@ impl From<StatusWords> for io::Reply {
     }
 }
 
+const N_SLOTS_SUPPORTED: u8 = 1;
+
+// Key History Object
+// (https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-73-4.pdf, Table 19)
+const KEY_HISTORY_OBJECT: [u8; 8] = [0xC1, 0x01, N_SLOTS_SUPPORTED, 0xC2, 0x01, 0x00, 0xFE, 0x00];
+
 // PIV Application ID
 // (https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-73-4.pdf, 2.2)
 // Right truncated version
@@ -270,11 +276,6 @@ fn check_get_data_params(data: &[u8]) -> Option<StatusWords> {
         return Some(StatusWords::FileNotFound);
     }
 
-    if data[4] != 0x0D {
-        // Todo: handle multiple slots
-        return Some(StatusWords::FileNotFound);
-    }
-
     None
 }
 
@@ -335,11 +336,18 @@ fn process_get_data(comm: &mut io::Comm, response_buffer: &mut DataResponseBuffe
         return comm.reply(status);
     }
 
-    // Compute get data content
-    compute_get_data_content(response_buffer);
+    // Object Identifier
+    // (https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-73-4.pdf, Table 3)
+    if data[4] == 0x0C { // Key History Object
+        comm.append(&KEY_HISTORY_OBJECT);
+        comm.reply_ok();
+    } else if 0x0D <= data[4] && data[4] <= 0x0D + N_SLOTS_SUPPORTED { // Retired X.509 Certificate for Key Management
+        compute_get_data_content(response_buffer);
+        compute_continue_response(comm, response_buffer);
+    } else { // Anything else is not supported
+        comm.reply(StatusWords::FileNotFound);
+    }
 
-    // Response
-    compute_continue_response(comm, response_buffer);
 }
 
 /// Get ledger serial
