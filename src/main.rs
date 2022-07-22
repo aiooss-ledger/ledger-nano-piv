@@ -3,7 +3,7 @@
 
 use nanos_sdk::bindings::cx_ecdh_no_throw;
 use nanos_sdk::bindings::cx_ecfp_private_key_t;
-use nanos_sdk::bindings::{os_serial, os_global_pin_is_validated};
+use nanos_sdk::bindings::{os_global_pin_is_validated, os_serial};
 use nanos_sdk::bindings::{CX_ECDH_POINT, CX_OK};
 use nanos_sdk::buttons::ButtonEvent;
 use nanos_sdk::ecc::CurvesId;
@@ -338,16 +338,18 @@ fn process_get_data(comm: &mut io::Comm, response_buffer: &mut DataResponseBuffe
 
     // Object Identifier
     // (https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-73-4.pdf, Table 3)
-    if data[4] == 0x0C { // Key History Object
+    if data[4] == 0x0C {
+        // Key History Object
         comm.append(&KEY_HISTORY_OBJECT);
         comm.reply_ok();
-    } else if 0x0D <= data[4] && data[4] <= 0x0D + N_SLOTS_SUPPORTED { // Retired X.509 Certificate for Key Management
+    } else if 0x0D <= data[4] && data[4] <= 0x0D + N_SLOTS_SUPPORTED {
+        // Retired X.509 Certificate for Key Management
         compute_get_data_content(response_buffer);
         compute_continue_response(comm, response_buffer);
-    } else { // Anything else is not supported
+    } else {
+        // Anything else is not supported
         comm.reply(StatusWords::FileNotFound);
     }
-
 }
 
 /// Get ledger serial
