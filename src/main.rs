@@ -61,7 +61,12 @@ impl From<StatusWords> for io::Reply {
     }
 }
 
-const PIV_APP_AID: [u8; 9] = [0xa0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00];
+// PIV Application ID
+// (https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-73-4.pdf, 2.2)
+// Right truncated version
+const PIV_AID: [u8; 9] = [0xa0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00];
+
+// BIP32 Path for PIV
 const BIP32_PATH: [u32; 5] = nanos_sdk::ecc::make_bip32_path(b"m/5261654'/0'/0'/130'");
 
 /// Helper function that derives the seed over Secp256r1
@@ -136,7 +141,7 @@ fn process_select_card(comm: &mut io::Comm) {
         return comm.reply(StatusWords::IncorrectP1P2);
     }
     if let Ok(d) = comm.get_data() {
-        if d != PIV_APP_AID {
+        if d != PIV_AID {
             return comm.reply(StatusWords::WrongData);
         }
     }
@@ -144,7 +149,7 @@ fn process_select_card(comm: &mut io::Comm) {
     comm.append(&[
         0x61, 0x11, 0x4f, 0x06, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00, 0x79, 0x07, 0x4f, 0x05,
     ]);
-    comm.append(&PIV_APP_AID);
+    comm.append(&PIV_AID);
     comm.reply_ok();
 }
 
