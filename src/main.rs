@@ -3,7 +3,7 @@
 
 use nanos_sdk::bindings::cx_ecdh_no_throw;
 use nanos_sdk::bindings::cx_ecfp_private_key_t;
-use nanos_sdk::bindings::os_serial;
+use nanos_sdk::bindings::{os_serial, os_global_pin_is_validated};
 use nanos_sdk::bindings::{CX_ECDH_POINT, CX_OK};
 use nanos_sdk::buttons::ButtonEvent;
 use nanos_sdk::ecc::CurvesId;
@@ -31,7 +31,7 @@ enum StatusWords {
     FuncNotSupported,
     FileNotFound,
     IncorrectP1P2,
-    // VerificationFailed = 0x6300,
+    VerificationFailed,
     // SecureMessagingNotSupported = 0x6882,
     // SecurityStatusNotSatisfied = 0x6982,
     // AuthMethodBlocked = 0x6983,
@@ -50,6 +50,7 @@ impl From<StatusWords> for u16 {
             StatusWords::FuncNotSupported => 0x6A81,
             StatusWords::FileNotFound => 0x6A82,
             StatusWords::IncorrectP1P2 => 0x6A86,
+            StatusWords::VerificationFailed => 0x6300,
         }
     }
 }
@@ -373,6 +374,19 @@ fn process_get_version(comm: &mut io::Comm) {
     comm.reply_ok();
 }
 
+/// Verify PIV Card Application PIN
+fn process_verify(comm: &mut io::Comm) {
+    if comm.get_p1() != 0x00 || comm.get_p2() != 0x80 {
+        return comm.reply(StatusWords::IncorrectP1P2);
+    }
+
+    if unsafe { os_global_pin_is_validated() } != 0 {
+        comm.reply_ok();
+    } else {
+        comm.reply(StatusWords::VerificationFailed);
+    }
+}
+
 #[no_mangle]
 extern "C" fn sample_main() {
     let mut comm = io::Comm::new();
@@ -394,6 +408,7 @@ extern "C" fn sample_main() {
 
             // Standard PIV commands
             // See https://csrc.nist.gov/publications/detail/sp/800-73/4/final
+            io::Event::Command(0x20) => process_verify(&mut comm),
             io::Event::Command(0xA4) => process_select_card(&mut comm),
             io::Event::Command(0x87) => process_general_auth(&mut comm),
             io::Event::Command(0xC0) => process_continue_response(&mut comm, &mut response_buffer),
