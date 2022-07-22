@@ -342,7 +342,7 @@ fn process_get_data(comm: &mut io::Comm, response_buffer: &mut DataResponseBuffe
         // Key History Object
         comm.append(&KEY_HISTORY_OBJECT);
         comm.reply_ok();
-    } else if 0x0D <= data[4] && data[4] <= 0x0D + N_SLOTS_SUPPORTED {
+    } else if 0x0D <= data[4] && data[4] < 0x0D + N_SLOTS_SUPPORTED {
         // Retired X.509 Certificate for Key Management
         compute_get_data_content(response_buffer);
         compute_continue_response(comm, response_buffer);
