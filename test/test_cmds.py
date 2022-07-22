@@ -17,7 +17,7 @@ def exchange_and_expect(input_hex: str, expected_output_hex: str):
 
 
 def test_select_card():
-    exchange_and_expect("00a4040005a000000308", "61114f0600001000010079074f05a000000308")
+    exchange_and_expect("00a4040009a00000030800001000", "61114f0600001000010079074f05a00000030800001000")
 
 
 def test_get_serial():
