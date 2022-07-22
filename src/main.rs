@@ -60,7 +60,7 @@ impl From<StatusWords> for io::Reply {
     }
 }
 
-const PIV_APP_AID: [u8; 5] = [0xa0, 0x00, 0x00, 0x03, 0x08];
+const PIV_APP_AID: [u8; 9] = [0xa0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00];
 const BIP32_PATH: [u32; 5] = nanos_sdk::ecc::make_bip32_path(b"m/5261654'/0'/0'/130'");
 
 /// Helper function that derives the seed over Secp256r1
