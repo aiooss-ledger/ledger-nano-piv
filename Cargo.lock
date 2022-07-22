@@ -160,7 +160,7 @@ checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 [[package]]
 name = "nanos_sdk"
 version = "0.1.0"
-source = "git+https://github.com/aiooss-ledger/ledger-nanos-sdk/?branch=ccid#558e3a18b39223e541bf17a11276a6f6de5219f3"
+source = "git+https://github.com/aiooss-ledger/ledger-nanos-sdk/?branch=ccid#bb59653558483f6336fd0a1278ea77b0b4f59542"
 dependencies = [
  "cc",
  "num-traits",
@@ -275,9 +275,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "spin"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c530c2b0d0bf8b69304b39fe2001993e267461948b890cd037d8ad4293fa1a0d"
+checksum = "7f6002a767bff9e83f8eeecf883ecb8011875a21ae8da43bffb817a57e78cc09"
 dependencies = [
  "lock_api",
 ]
