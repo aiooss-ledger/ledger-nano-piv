@@ -1,9 +1,11 @@
 use crate::data_response::*;
 use crate::status::*;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum DataObjectIdentifier {
     DiscoveryObject,
+    CardHolderUniqueIdentifier,
+    CardCapabilitiesContainer,
     RetiredCertificate(u8),
     KeyHistory,
     UnknownObjectIdentifier,
@@ -14,6 +16,53 @@ pub const N_SLOTS_SUPPORTED: u8 = 1;
 // Key History Object
 // (https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-73-4.pdf, Table 19)
 const KEY_HISTORY_OBJECT: [u8; 8] = [0xC1, 0x01, N_SLOTS_SUPPORTED, 0xC2, 0x01, 0x00, 0xFE, 0x00];
+
+// Discovery Object
+// (https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-73-4.pdf, Table 18)
+const DISCOVERY_RESPONSE: [u8; 20] = [
+    0x7E, 0x12, 0x4F, 0x0B, 0xA0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00, 0x5F,
+    0x2F, 0x02, 0x40, 0x00,
+];
+
+// CHUID Object
+// (https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-73-4.pdf, Table 9)
+//
+// Dummy FASC-N
+// Dummy UUID (TODO set nano serial number here)
+// Expiry date: January 2050
+// Empty signature
+// Empty Error detection code
+const CHUID_OBJECT: [u8; 59] = [
+    0x30, 0x19, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x34, 0x10, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x35, 0x08, 0x32,
+    0x30, 0x35, 0x30, 0x30, 0x31, 0x30, 0x31, 0x3e, 0x00, 0xfe, 0x00,
+];
+
+// Card Capabilities Container
+// (https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-73-4.pdf, Table 8)
+//
+// Card Identifier
+//      GSC-RID (A000000116D) || Manufacturer ID (dummy) || CardType (0x05 because why not?) ||
+//      Card ID (dummy) (TODO set nano serial number here)
+// Container Version (0.0)
+// Grammar Version (0.0)
+// Application card URL (empty)
+// PKCS#15 compliance (no)
+// Registered Data Model (0x10, fixed for PIV)
+// Access Control Rule Table (empty)
+// Card APDU (empty)
+// Redirection tag (empty)
+// Capability Tuple (empty)
+// Status Tuple (empty)
+// Next CCC (empty)
+// Error correcting code (empty)
+const CCC_OBJECT: [u8; 51] = [
+    0xf0, 0x15, 0xa0, 0x00, 0x00, 0x01, 0x16, 0xff, 0x05, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf1, 0x01, 0x00, 0xf2, 0x01, 0x00, 0xf3, 0x00, 0xf4,
+    0x01, 0x00, 0xf5, 0x01, 0x10, 0xf6, 0x00, 0xf7, 0x00, 0xfa, 0x00, 0xfb, 0x00, 0xfc, 0x00, 0xfd,
+    0x00, 0xfe, 0x00,
+];
 
 fn set_retired_certificate_data(response_buffer: &mut DataResponseBuffer, _i: u8) {
     // Compute data buffer: todo
@@ -59,10 +108,14 @@ impl DataObjectIdentifier {
             3 => {
                 if val[..2] != [0x5F, 0xC1] {
                     Self::UnknownObjectIdentifier
-                } else if 0x0D <= val[2] && val[2] <= 0x20 {
-                    Self::RetiredCertificate(val[2] - 0x0D)
+                } else if val[2] == 0x02 {
+                    Self::CardHolderUniqueIdentifier
+                } else if val[2] == 0x07 {
+                    Self::CardCapabilitiesContainer
                 } else if val[2] == 0x0C {
                     Self::KeyHistory
+                } else if 0x0D <= val[2] && val[2] <= 0x20 {
+                    Self::RetiredCertificate(val[2] - 0x0D)
                 } else {
                     Self::UnknownObjectIdentifier
                 }
@@ -79,17 +132,35 @@ impl DataObjectIdentifier {
     }
 
     pub fn handle(&self, response_buffer: &mut DataResponseBuffer) -> Result<(), StatusWord> {
+        if *self == Self::DiscoveryObject {
+            response_buffer.set(&DISCOVERY_RESPONSE);
+            return Ok(());
+        }
+
+        response_buffer.set(&[0x53]);
+
         match self {
-            Self::DiscoveryObject => Err(StatusWord::FileNotFound),
+            Self::CardHolderUniqueIdentifier => {
+                response_buffer.extend(&[CHUID_OBJECT.len() as u8]);
+                response_buffer.extend(&CHUID_OBJECT);
+                Ok(())
+            }
+            Self::CardCapabilitiesContainer => {
+                response_buffer.extend(&[CCC_OBJECT.len() as u8]);
+                response_buffer.extend(&CCC_OBJECT);
+                Ok(())
+            }
+
+            Self::KeyHistory => {
+                response_buffer.extend(&[KEY_HISTORY_OBJECT.len() as u8]);
+                response_buffer.extend(&KEY_HISTORY_OBJECT);
+                Ok(())
+            }
             Self::RetiredCertificate(i) => {
                 set_retired_certificate_data(response_buffer, *i);
                 Ok(())
             }
-            Self::KeyHistory => {
-                response_buffer.set(&KEY_HISTORY_OBJECT);
-                Ok(())
-            }
-            Self::UnknownObjectIdentifier => Err(StatusWord::FileNotFound),
+            _ => Err(StatusWord::FileNotFound),
         }
     }
 }

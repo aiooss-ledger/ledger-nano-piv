@@ -39,6 +39,14 @@ impl DataResponseBuffer {
         self.read_cnt = 0;
     }
 
+    pub fn extend(&mut self, data: &[u8]) {
+        let copied_length = data.len().min(DATA_RESP_BUFFER_SIZE - self.data.len());
+
+        self.data
+            .extend_from_slice(&data[0..copied_length])
+            .unwrap();
+    }
+
     fn get_next_chunk_size(&self) -> usize {
         APDU_MAX_CHUNK_SIZE.min(self.remaining_length())
     }
