@@ -1,7 +1,7 @@
 use crate::data_response::*;
 use crate::status::*;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum DataObjectIdentifier {
     DiscoveryObject,
     CardHolderUniqueIdentifier,
