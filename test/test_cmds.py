@@ -37,7 +37,7 @@ def test_get_chuid():
         0x53, 59, 0x30, 0x19
         ]).hex()
     expected_fascn = "d4e739da739ced39ce739d836858210842108421cc339e23ff"
-    expected_uuid = "34101968caafa6425f5d93f3499c5a436bc9"
+    expected_uuid = "34101968caafa6425f5d93f3499c5a43"
     expected_suffix = bytes([
         0x35, 0x08, 0x32, 0x30, 0x35, 0x30, 0x30, 0x31, 0x30, 0x31, 0x3e, 0x00,
         0xfe, 0x00

@@ -46,7 +46,7 @@ const CHUID_OBJECT_SUFFIX: [u8; 14] = [
 //
 // Card Identifier
 //      GSC-RID (A000000116D) || Manufacturer ID (dummy) || CardType (0x05 because why not?) ||
-//      Card ID (UUID v5 from serial number at runtime)
+//      Card ID (UUID v5 from serial number at runtime truncated to 14 bytes)
 // Container Version (0.0)
 // Grammar Version (0.0)
 // Application card URL (empty)
@@ -152,7 +152,7 @@ impl DataObjectIdentifier {
             Self::CardCapabilitiesContainer => {
                 response_buffer.extend(&[CCC_OBJECT_LEN]);
                 response_buffer.extend(&CCC_OBJECT_PREFIX);
-                response_buffer.extend(&device_uuid());
+                response_buffer.extend(&device_uuid()[..14]);
                 response_buffer.extend(&CCC_OBJECT_SUFFIX);
                 Ok(())
             }
