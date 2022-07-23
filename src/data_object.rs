@@ -1,5 +1,6 @@
 use crate::data_response::*;
 use crate::status::*;
+use crate::utils::*;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum DataObjectIdentifier {
@@ -11,10 +12,9 @@ pub enum DataObjectIdentifier {
     UnknownObjectIdentifier,
 }
 
-pub const N_SLOTS_SUPPORTED: u8 = 1;
-
 // Key History Object
 // (https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-73-4.pdf, Table 19)
+const N_SLOTS_SUPPORTED: u8 = 1;
 const KEY_HISTORY_OBJECT: [u8; 8] = [0xC1, 0x01, N_SLOTS_SUPPORTED, 0xC2, 0x01, 0x00, 0xFE, 0x00];
 
 // Discovery Object
@@ -27,16 +27,18 @@ const DISCOVERY_RESPONSE: [u8; 20] = [
 // CHUID Object
 // (https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-73-4.pdf, Table 9)
 //
-// Dummy FASC-N
-// Dummy UUID (TODO set nano serial number here)
+// FASC-N (with agency 9999, generated using poc/fasc-n_encode.py)
+// UUID (v5 from serial number added at runtime)
 // Expiry date: January 2050
 // Empty signature
 // Empty Error detection code
-const CHUID_OBJECT: [u8; 59] = [
-    0x30, 0x19, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x34, 0x10, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x35, 0x08, 0x32,
-    0x30, 0x35, 0x30, 0x30, 0x31, 0x30, 0x31, 0x3e, 0x00, 0xfe, 0x00,
+const CHUID_OBJECT_LEN: u8 = 59;
+const CHUID_OBJECT_PREFIX: [u8; 29] = [
+    0x30, 0x19, 0xD4, 0xE7, 0x39, 0xDA, 0x73, 0x9C, 0xED, 0x39, 0xCE, 0x73, 0x9D, 0x83, 0x68, 0x58,
+    0x21, 0x08, 0x42, 0x10, 0x84, 0x21, 0xCC, 0x33, 0x9E, 0x23, 0xFF, 0x34, 0x10,
+];
+const CHUID_OBJECT_SUFFIX: [u8; 14] = [
+    0x35, 0x08, 0x32, 0x30, 0x35, 0x30, 0x30, 0x31, 0x30, 0x31, 0x3e, 0x00, 0xfe, 0x00,
 ];
 
 // Card Capabilities Container
@@ -44,7 +46,7 @@ const CHUID_OBJECT: [u8; 59] = [
 //
 // Card Identifier
 //      GSC-RID (A000000116D) || Manufacturer ID (dummy) || CardType (0x05 because why not?) ||
-//      Card ID (dummy) (TODO set nano serial number here)
+//      Card ID (UUID v5 from serial number at runtime)
 // Container Version (0.0)
 // Grammar Version (0.0)
 // Application card URL (empty)
@@ -57,11 +59,11 @@ const CHUID_OBJECT: [u8; 59] = [
 // Status Tuple (empty)
 // Next CCC (empty)
 // Error correcting code (empty)
-const CCC_OBJECT: [u8; 51] = [
-    0xf0, 0x15, 0xa0, 0x00, 0x00, 0x01, 0x16, 0xff, 0x05, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf1, 0x01, 0x00, 0xf2, 0x01, 0x00, 0xf3, 0x00, 0xf4,
-    0x01, 0x00, 0xf5, 0x01, 0x10, 0xf6, 0x00, 0xf7, 0x00, 0xfa, 0x00, 0xfb, 0x00, 0xfc, 0x00, 0xfd,
-    0x00, 0xfe, 0x00,
+const CCC_OBJECT_LEN: u8 = 51;
+const CCC_OBJECT_PREFIX: [u8; 9] = [0xf0, 0x15, 0xa0, 0x00, 0x00, 0x01, 0x16, 0xff, 0x05];
+const CCC_OBJECT_SUFFIX: [u8; 28] = [
+    0xf1, 0x01, 0x00, 0xf2, 0x01, 0x00, 0xf3, 0x00, 0xf4, 0x01, 0x00, 0xf5, 0x01, 0x10, 0xf6, 0x00,
+    0xf7, 0x00, 0xfa, 0x00, 0xfb, 0x00, 0xfc, 0x00, 0xfd, 0x00, 0xfe, 0x00,
 ];
 
 fn set_retired_certificate_data(response_buffer: &mut DataResponseBuffer, _i: u8) {
@@ -141,13 +143,17 @@ impl DataObjectIdentifier {
 
         match self {
             Self::CardHolderUniqueIdentifier => {
-                response_buffer.extend(&[CHUID_OBJECT.len() as u8]);
-                response_buffer.extend(&CHUID_OBJECT);
+                response_buffer.extend(&[CHUID_OBJECT_LEN]);
+                response_buffer.extend(&CHUID_OBJECT_PREFIX);
+                response_buffer.extend(&device_uuid());
+                response_buffer.extend(&CHUID_OBJECT_SUFFIX);
                 Ok(())
             }
             Self::CardCapabilitiesContainer => {
-                response_buffer.extend(&[CCC_OBJECT.len() as u8]);
-                response_buffer.extend(&CCC_OBJECT);
+                response_buffer.extend(&[CCC_OBJECT_LEN]);
+                response_buffer.extend(&CCC_OBJECT_PREFIX);
+                response_buffer.extend(&device_uuid());
+                response_buffer.extend(&CCC_OBJECT_SUFFIX);
                 Ok(())
             }
 

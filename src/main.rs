@@ -17,6 +17,7 @@ mod fonts;
 mod layout;
 mod screen_util;
 mod status;
+mod utils;
 
 use data_object::*;
 use data_response::*;
