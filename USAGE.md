@@ -45,6 +45,12 @@ identifiers. To add support for these devices, you need to edit
 
 Now you should see the Ledger device in `pkcs11-tool -L` output.
 
+### OpenSSH
+
+```
+ssh-keygen -D /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so
+```
+
 ## On Windows
 
 Windows should detect the Ledger device as a `Microsoft Usbccid (WUDF)` smart
@@ -55,3 +61,20 @@ command line.
 To use open-source software such as VeryCrypt, Putty-CAC and OpenVPN, you will
 need to install OpenSC. More information is available on
 [OpenSC wiki](https://github.com/OpenSC/OpenSC/wiki/Windows-Quick-Start).
+
+### OpenSSH
+
+Using built-in OpenSSH (since build 1809) and OpenSC,
+
+```
+ssh-keygen -D "C:\Program Files\OpenSC Project\OpenSC\pkcs11\opensc-pkcs11.dll
+```
+
+### VeraCrypt
+
+Configure VeraCrypt to use OpenSC PKCS11 library:
+go to `Settings > Security Tokens...` then press `Select Library...` and
+choose `C:\Program Files\OpenSC Project\OpenSC\pkcs11\opensc-pkcs11.dll`.
+
+Then you should be able to manage the security token in
+`Tools > Manage Security Token Keyfiles...`.
