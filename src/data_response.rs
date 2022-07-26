@@ -1,6 +1,6 @@
 use crate::status::*;
-use heapless::Vec;
 use nanos_sdk::io;
+use tinyvec::ArrayVec;
 
 const APDU_MAX_CHUNK_SIZE: usize = 255;
 const DATA_RESP_BUFFER_SIZE: usize = 512;
@@ -9,14 +9,14 @@ const DATA_RESP_BUFFER_SIZE: usize = 512;
 // read is sent to the host in the status word. The host ask the card to
 // continue the response with 0xC0 instruction.
 pub struct DataResponseBuffer {
-    data: Vec<u8, DATA_RESP_BUFFER_SIZE>,
+    data: ArrayVec<[u8; DATA_RESP_BUFFER_SIZE]>,
     read_cnt: usize,
 }
 
 impl DataResponseBuffer {
     pub fn new() -> DataResponseBuffer {
         Self {
-            data: Vec::new(),
+            data: ArrayVec::new(),
             read_cnt: 0,
         }
     }
@@ -31,9 +31,7 @@ impl DataResponseBuffer {
 
         // Copy data content
         self.data.clear();
-        self.data
-            .extend_from_slice(&data[0..copied_length])
-            .unwrap();
+        self.data.extend_from_slice(&data[0..copied_length]);
 
         // Init read counter
         self.read_cnt = 0;
@@ -42,9 +40,7 @@ impl DataResponseBuffer {
     pub fn extend(&mut self, data: &[u8]) {
         let copied_length = data.len().min(DATA_RESP_BUFFER_SIZE - self.data.len());
 
-        self.data
-            .extend_from_slice(&data[0..copied_length])
-            .unwrap();
+        self.data.extend_from_slice(&data[0..copied_length]);
     }
 
     fn get_next_chunk_size(&self) -> usize {
