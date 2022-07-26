@@ -1,3 +1,9 @@
+[target.nanos]
+runner = "speculos.py -m nanos"
+
+[target.nanox]
+runner = "speculos.py -m nanox"
+
 [target.nanosplus]
 runner = "speculos.py -m nanosp"
 
