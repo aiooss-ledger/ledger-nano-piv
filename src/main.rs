@@ -32,6 +32,8 @@ nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
 const PIV_AID: [u8; 9] = [0xa0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00];
 
 // BIP32 Path for PIV
+// m/5261654'/<account>'/<usage>'/<key reference>'
+// 5261654 corresponds to "PIV" encoded in big-endian ASCII.
 const BIP32_PATH: [u32; 5] = nanos_sdk::ecc::make_bip32_path(b"m/5261654'/0'/0'/130'");
 
 /// Helper function that derives the seed over Secp256r1
