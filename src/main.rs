@@ -240,20 +240,23 @@ fn process_verify(comm: &mut io::Comm) {
 extern "C" fn sample_main() {
     let mut comm = io::Comm::new();
 
-    // Erase screen and show message
+    // Erase screen
     screen_util::fulldraw(0, 0, &bitmaps::BLANK);
-    bitmaps::PADLOCK.draw(64 - (bitmaps::PADLOCK.width as i32) / 2, 4);
-    "*PIV* ready".display(Line::Second, Layout::Centered);
 
     // When response is split across multiple APDU packets, remaining length to
     // read is sent to the host in the status word. The host ask the card to
     // continue the response with 0xC0 instruction.
     let mut response_buffer = DataResponseBuffer::new();
 
+    // Increased every tick until standby. Resetted if a button is pressed.
+    let mut standby_tick_count = 0;
+
     loop {
         match comm.next_event() {
             io::Event::Button(ButtonEvent::BothButtonsRelease) => nanos_sdk::exit_app(0),
-            io::Event::Button(_) => {}
+            io::Event::Button(_) => {
+                standby_tick_count = 0;
+            }
 
             // Standard PIV commands
             // See https://csrc.nist.gov/publications/detail/sp/800-73/4/final
@@ -270,7 +273,21 @@ extern "C" fn sample_main() {
 
             io::Event::Command(_) => comm.reply(StatusWord::FuncNotSupported),
 
-            io::Event::Ticker => {}
+            io::Event::Ticker => {
+                if standby_tick_count == 0 {
+                    // Show message
+                    bitmaps::PADLOCK.draw(64 - (bitmaps::PADLOCK.width as i32) / 2, 4);
+                    "*PIV* ready".display(Line::Second, Layout::Centered);
+                } else if standby_tick_count == 300 {
+                    // Blank screen to mitigate burn-in effects
+                    screen_util::fulldraw(0, 0, &bitmaps::BLANK);
+                }
+
+                // Standby state after 300 ticks
+                if standby_tick_count <= 300 {
+                    standby_tick_count += 1;
+                }
+            }
         }
     }
 }
